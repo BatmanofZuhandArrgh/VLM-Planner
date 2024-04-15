@@ -1,7 +1,3 @@
-#Edited
-out/
-alfworld/data/
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -132,4 +128,4 @@ dmypy.json
 .pyre/
 
 # TW-Alfred
-alfworld/data/json_2.1.1*
+data/json_2.1.1*

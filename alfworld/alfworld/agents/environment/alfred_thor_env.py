@@ -102,7 +102,7 @@ class AlfredThorEnv(object):
             # recording
             save_frames_path = self.config['env']['thor']['save_frames_path']
             self.env.save_frames_path = os.path.join(save_frames_path, self.traj_root.replace('../', ''))
-
+            
             # initialize to start position
             self.env.step(dict(self.traj_data['scene']['init_action']))            # print goal instr
             task_desc = get_templated_task_desc(self.traj_data)
@@ -171,7 +171,15 @@ class AlfredThorEnv(object):
 
         def record_action(self, action):
             txt_file = os.path.join(self.env.save_frames_path, 'action.txt')
+            
             with open(txt_file, 'a+') as f:
+                f.write("%s\r\n" % str(action))
+
+            #EDITED for path
+            hardcoded_txt_file = os.path.join('../out',self.env.save_frames_path.split('alfworld/')[-1], 'action.txt')
+            os.makedirs(os.path.dirname(hardcoded_txt_file), exist_ok=True)
+
+            with open(hardcoded_txt_file, 'a+') as f:
                 f.write("%s\r\n" % str(action))
 
         def get_info(self):
@@ -312,7 +320,7 @@ class AlfredThorEnv(object):
             env.init_env(self.config)
         return self
 
-    def reset(self):
+    def reset(self, index):
         # set tasks
         batch_size = self.batch_size
         # reset envs
@@ -320,10 +328,15 @@ class AlfredThorEnv(object):
         if self.train_eval == 'train':
             tasks = random.sample(self.json_file_list, k=batch_size)
         else:
+            #EDITED remove random shuffling, just for eval
             if len(self.json_file_list)-batch_size > batch_size:
-                tasks = [self.json_file_list.pop(random.randrange(len(self.json_file_list))) for _ in range(batch_size)]
+                # tasks = [self.json_file_list.pop(random.randrange(len(self.json_file_list))) for _ in range(batch_size)]
+                tasks = [self.json_file_list[index]]
+                self.json_file_list.pop(tasks[0])
             else:
-                tasks = random.sample(self.json_file_list, k=batch_size)
+                #EDITED
+                # tasks = random.sample(self.json_file_list, k=batch_size)
+                tasks = [self.json_file_list[index]]
                 self.get_env_paths()
 
         for n in range(batch_size):
@@ -363,7 +376,7 @@ class AlfredThorEnv(object):
                  'won': wons,
                  'goal_condition_success_rate': gc_srs,
                  'extra.gamefile': gamefiles,
-                 'expert_plan': expert_plans}
+                 'extra.expert_plan': expert_plans}
         return obs, dones, infos
 
     def get_frames(self):

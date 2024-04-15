@@ -6,3 +6,8 @@ torch
 torchvision
 tqdm
 werkzeug==2.0.3
+
+h5py
+pycocotools
+transformers
+visdom

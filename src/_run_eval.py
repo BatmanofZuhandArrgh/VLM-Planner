@@ -9,13 +9,70 @@ import cv2
 import argparse
 import pprint
 from tqdm import tqdm
+from openai import OpenAI
 
-
-import alfworld.agents.environment
 from utils import action_mapping, action_formatting, locate_agent
+import alfworld.agents.environment
 from hlp_planner import LLM_HLP_Generator
-from vlm import vlm, get_model
-from llm import llm
+
+CLIENT = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+
+def llm(prompt, engine, images=None, stop=["\n"]):
+    
+    if engine == 'gpt-4':
+        response = CLIENT.chat.completions.create(
+            model='gpt-4',
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant that can plan household tasks."},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0,
+            max_tokens=100,
+            top_p=1,
+            frequency_penalty=0.0,
+            presence_penalty=0.0,
+            stop=stop
+        )
+        return response.choices[0].message.content
+    
+    elif engine == 'gpt-4v':
+
+        response = CLIENT.chat.completions.create(
+            model="gpt-4-vision-preview",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{images[0]}"
+                            }
+                        },
+                        {
+                            "type": "text",
+                            "text": prompt,
+                        },
+                    ],
+                }
+            ],
+            max_tokens=300,
+        )
+        return response.choices[0].message.content
+
+    else:
+        response = CLIENT.completions.create(
+            model="gpt-3.5-turbo-instruct", #"text-davinci-003",
+            prompt=prompt,
+            temperature=0,
+            max_tokens=100,
+            top_p=1,
+            frequency_penalty=0.0,
+            presence_penalty=0.0,
+            stop=stop
+        )
+        return response.choices[0].text
+
 
 def process_ob(ob):
     if ob.startswith('You arrive at loc '):
@@ -58,9 +115,9 @@ def eval_single_task(prompt, env, hlp_generator, curr_task, engine, dynamic=True
     # Run until high-level plans are exhausted
     while high_level_plans:
         print('===========NEW STEP==============')
-        # print('Admissible', info['admissible_commands'][0])
+        print('Admissible', info['admissible_commands'][0])
         
-        # print('Generated plans: ', high_level_plans)
+        print('Generated plans: ', high_level_plans)
         plan = high_level_plans.pop(0).strip()
         plan_old_format = plan
 
@@ -88,13 +145,13 @@ def eval_single_task(prompt, env, hlp_generator, curr_task, engine, dynamic=True
         if observation == "Nothing happens.":
             #Assign this current plan as failure
             prev_fail_plan = plan
-            # print(f'----------------{prev_fail_plan}')
+            print(f'----------------{prev_fail_plan}')
 
             # Dynamic re-planning       
             if dynamic:
                 curr_vis_objs = [obj["objectType"] for obj in env.envs[0].env.last_event.metadata['objects'] if obj['visible']]
                 seen_objs += curr_vis_objs
-                # print('Visible object', init_vis_objs)
+                print('Visible object', init_vis_objs)
 
                 curr_task = {
                         "task_instr": high_instrs[0],
@@ -116,7 +173,7 @@ def eval_single_task(prompt, env, hlp_generator, curr_task, engine, dynamic=True
                 llm_out = llm(new_prompt, images=encoded_frames, engine = engine,stop=['\n'])
                 high_level_plans = llm_out.split(',')
                 high_level_plans = [action_mapping(x) for x in high_level_plans]
-                # print('New plan!!!', high_level_plans)
+                print('New plan!!!', high_level_plans)
 
         else:
             prev_fail_plan = '' #A failed plan may not be a failure everywhere
@@ -169,12 +226,10 @@ if __name__ == '__main__':
 
     hlp_generator = LLM_HLP_Generator(knn_data_path=config["llm_planner"]["knn_dataset_path"], emb_model_name=config["llm_planner"]["emb_model_name"], debug=config["llm_planner"]["debug"])
 
-    # print(env.json_file_list)
-
     # Main eval loop
-    for index in range(num_games):
-        ob, info = env.reset(index = 1)
-        print('Task id: ', info['extra.gamefile'][0])        
+    for _ in range(num_games):
+        ob, info = env.reset()
+        
         # print('visible object')
         # print(env.envs[0].controller.visible_objects)
         # print('receps')
@@ -203,7 +258,7 @@ if __name__ == '__main__':
         
         init_vis_objs = [obj["objectType"] for obj in env.envs[0].env.last_event.metadata['objects'] if obj['visible']]
         # print(env.envs[0].env.last_event.metadata['objects'])
-        # print('Visible object', init_vis_objs)
+        print('Visible object', init_vis_objs)
         # raise KeyboardInterrupt
 
         # If there are multiple annotations for the same environment setup, evaluate on all of them
@@ -224,9 +279,8 @@ if __name__ == '__main__':
             
             for i, (k, v) in enumerate(prefixes.items()):
                 if name.startswith(k):
-                    print('k', 'v', k, v)
+                    # print('k', 'v', k, v)
                     r = eval_single_task(init_prompt, env, hlp_generator, curr_task, config["llm_planner"]["engine"], dynamic=config["llm_planner"]["dynamic"], ob=ob, info = info)
-                    # r = 0
                     rs[i] += r
                     cnts[i] += 1
                     break

@@ -1,6 +1,6 @@
 llm_planner:
-  engine: "gpt-4"
-  dynamic: "false"
+  engine: "gpt-3"
+  dynamic: "true"
   knn_dataset_path: "./knn_set.pkl"
   emb_model_name: "paraphrase-MiniLM-L6-v2"
   num_in_context_examples: 9
@@ -35,12 +35,12 @@ env:
     screen_width: 300                                          # width of THOR window
     screen_height: 300                                         # height of THOR window
     smooth_nav: False                                          # smooth rotations, looks, and translations during navigation (very slow)
-    save_frames_to_disk: False                                 # save frame PNGs to disk (useful for making videos)
-    save_frames_path: './videos/'                              # path to save frame PNGs
+    save_frames_to_disk: True                                 # save frame PNGs to disk (useful for making videos)
+    save_frames_path: '/home/anhnguyen/Documents/VLM-Planner/out'                              # path to save frame PNGs
 
 controller:
   type: 'oracle'                                               # 'oracle' or 'oracle_astar' or 'mrcnn' or 'mrcnn_astar' (aka BUTLER)
-  debug: False
+  debug: True
   load_receps: True                                            # load receptacle locations from precomputed dict (if available)
 
 mask_rcnn:
