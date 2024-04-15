@@ -13,20 +13,46 @@ from tqdm import tqdm
 
 import alfworld.agents.environment
 from utils import action_mapping, action_formatting, locate_agent
-from hlp_planner import LLM_HLP_Generator
-from vlm import vlm, get_model
+from hlp_planner import LLM_HLP_Generator, vlm_detect
+# from vlm import vlm, get_model
 from llm import llm
+
+def encode_image(numpy_img):
+    _, JPEG = cv2.imencode('.jpeg', numpy_img)
+    return base64.b64encode(JPEG).decode('utf-8')
 
 def process_ob(ob):
     if ob.startswith('You arrive at loc '):
         ob = ob[ob.find('. ')+2:]    
     return ob
 
+# def llm_detect()
+def explore(env, engine, admissible_actions):
+    #Go to all locations to see what objects are available
+    all_objects = []
+    
+    # Get current frame at current location
+    init_frames = env.get_frames()
+    encoded_frames = [encode_image(frame) for frame in init_frames]
+    # cur_frame = cv2.cvtColor(cur_frame, cv2.COLOR_RGB2BGR)
+    llm_out = llm('List all objects in this image? Answer in format [banana, apple, orange]', engine=engine, images=encoded_frames, stop=['\n'])
+    observed_objects = [x.strip() for x in llm_out[1: -1].split(',')]
+    all_objects.extend(observed_objects)
+    
 
-def encode_image(numpy_img):
-    _, JPEG = cv2.imencode('.jpeg', numpy_img)
-    return base64.b64encode(JPEG).decode('utf-8')
+    # Go to all possible location
+    print('Explore to get all objects in the room, as much as one can: ')
+    #Only first 3, might take too long for a case
+    for action in tqdm(admissible_actions[:3]):
+        if 'go to ' in action:
+            observation, reward, done, info = env.step([action])
+            cur_frames = env.get_frames()
+            encoded_frames = [encode_image(frame) for frame in cur_frames]
+            llm_out = llm('List all objects in this image? Answer in format [banana, apple, orange]', engine=engine, images=encoded_frames, stop=['\n'])
+            observed_objects = [x.strip() for x in llm_out[1: -1].split(',')]
+            all_objects.extend(observed_objects)
 
+    return all_objects
 
 def eval_single_task(prompt, env, hlp_generator, curr_task, engine, dynamic=True, to_print=True, vision=False,  ob='', info = ''):
     # print('Input params', prompt, env, hlp_generator, curr_task, engine, dynamic, to_print, vision,  ob)
@@ -46,6 +72,7 @@ def eval_single_task(prompt, env, hlp_generator, curr_task, engine, dynamic=True
     # Get initial high-level plan
     # print("Prompt: ", prompt)
     # print('---End of prompt---')
+    # llm_out = vlm(text=prompt,  image=encode_image, stop=['\n'])
     llm_out = llm(prompt, engine=engine, images=encoded_frames, stop=['\n'])
     high_level_plans = llm_out.split(',')
     high_level_plans = [action_mapping(x) for x in high_level_plans]
@@ -113,7 +140,8 @@ def eval_single_task(prompt, env, hlp_generator, curr_task, engine, dynamic=True
                     encoded_frames = [encode_image(frame) for frame in curr_frames]
 
                 # Generate new plans if dynamic
-                llm_out = llm(new_prompt, images=encoded_frames, engine = engine,stop=['\n'])
+                # llm_out = vlm(new_prompt, images=encoded_frames, engine = engine,stop=['\n'])
+                llm_out = llm(prompt, engine=engine, images=encoded_frames, stop=['\n'])
                 high_level_plans = llm_out.split(',')
                 high_level_plans = [action_mapping(x) for x in high_level_plans]
                 # print('New plan!!!', high_level_plans)
@@ -167,13 +195,15 @@ if __name__ == '__main__':
     cnts = [0] * 6
     rs = [0] * 6
 
+    # model, processor = get_model()
+
     hlp_generator = LLM_HLP_Generator(knn_data_path=config["llm_planner"]["knn_dataset_path"], emb_model_name=config["llm_planner"]["emb_model_name"], debug=config["llm_planner"]["debug"])
 
     # print(env.json_file_list)
-
+    
     # Main eval loop
     for index in range(num_games):
-        ob, info = env.reset(index = 1)
+        ob, info = env.reset(index)
         print('Task id: ', info['extra.gamefile'][0])        
         # print('visible object')
         # print(env.envs[0].controller.visible_objects)
@@ -200,12 +230,18 @@ if __name__ == '__main__':
         
         # print('high_instrs')
         # print('step_instrs')
-        
-        init_vis_objs = [obj["objectType"] for obj in env.envs[0].env.last_event.metadata['objects'] if obj['visible']]
-        # print(env.envs[0].env.last_event.metadata['objects'])
-        # print('Visible object', init_vis_objs)
-        # raise KeyboardInterrupt
 
+        
+        # raise KeyboardInterrupt
+    
+        # init_vis_objs = [obj["objectType"] for obj in env.envs[0].env.last_event.metadata['objects'] if obj['visible']]
+        init_vis_objs = explore(env=env, engine=config["llm_planner"]["engine"], admissible_actions=info['admissible_commands'][0])
+        # print(env.envs[0].env.last_event.metadata['objects'])
+        print('Detected object', init_vis_objs)
+        # print('VQA object', objects)
+        raise KeyboardInterrupt
+        
+        '''
         # If there are multiple annotations for the same environment setup, evaluate on all of them
         for i, high_instr in enumerate(high_instrs):
             curr_task = {
@@ -232,3 +268,4 @@ if __name__ == '__main__':
                     break
             print(_+1, 'r', r, 'rs', rs, 'cnts', cnts, 'sum(rs)/sum(cnts)', sum(rs) / sum(cnts))
             print('------------\n')
+        '''

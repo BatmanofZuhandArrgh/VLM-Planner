@@ -181,7 +181,12 @@ class OracleAgent(BaseAgent):
                 # feedback conditions
                 loc_id = list(self.receptacles.keys()).index(recep['object_id'])
                 loc_feedback = "You arrive at loc %s. " % loc_id
+                
+                #EDITED added to NOT get nothing happens due to missing annotations
+                if 'closed' not in recep.keys():
+                    recep['closed'] = True
                 state_feedback = "The {} is {}. ".format(self.curr_recep, "closed" if recep['closed'] else "open") if recep['closed'] is not None else ""
+                
                 loc_state_feedback = loc_feedback + state_feedback
                 self.feedback = loc_state_feedback + self.feedback if "closed" not in state_feedback else loc_state_feedback
                 self.frame_desc = str(self.feedback)

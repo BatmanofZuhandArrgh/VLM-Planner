@@ -332,7 +332,7 @@ class AlfredThorEnv(object):
             if len(self.json_file_list)-batch_size > batch_size:
                 # tasks = [self.json_file_list.pop(random.randrange(len(self.json_file_list))) for _ in range(batch_size)]
                 tasks = [self.json_file_list[index]]
-                self.json_file_list.pop(tasks[0])
+                self.json_file_list.pop(index)
             else:
                 #EDITED
                 # tasks = random.sample(self.json_file_list, k=batch_size)

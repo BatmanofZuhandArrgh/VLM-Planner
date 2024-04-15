@@ -136,8 +136,6 @@ def embed_sentence(sentence, model="paraphrase-MiniLM-L6-v2"):
     return sentence_embedding
 
 
-
-
 if __name__ == '__main__':
 
 

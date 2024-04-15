@@ -38,7 +38,7 @@ def llm(prompt, engine, images=None, stop=["\n"]):
     elif engine == 'gpt-4v':
 
         response = CLIENT.chat.completions.create(
-            model="gpt-4-vision-preview",
+            model="gpt-4-turbo",
             messages=[
                 {
                     "role": "user",
@@ -57,6 +57,7 @@ def llm(prompt, engine, images=None, stop=["\n"]):
                 }
             ],
             max_tokens=300,
+            temperature=0,
         )
         return response.choices[0].message.content
 

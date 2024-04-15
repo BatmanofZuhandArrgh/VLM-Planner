@@ -3,6 +3,9 @@
 import pandas as pd
 import openai
 import random
+import re
+
+from vlm import vlm
 from ast import literal_eval
 from sentence_transformers import SentenceTransformer
 from sentence_transformers.util import cos_sim
@@ -19,7 +22,15 @@ ACT_TO_STR = {
     'Navigation': "Navigate"
 }
 
-
+def vlm_detect(model, processor, image,  prompt = "USER: <image>\nWhat objects are in this pic?\nASSISTANT:"):
+    #Try to get every objects, even tho it produces more objects
+    answer = vlm(model, processor, text=prompt, image=image)
+    print(answer)
+    pattern =  r'\ba[n]?\s+([\w\s]+?(?=[,.]))' #r'\ba[n]?\s+(\w+)'
+    matches = re.findall(pattern, answer.split('ASSISTANT')[-1])
+    
+    return list(set(matches))
+    
 class LLM_HLP_Generator():
     def __init__(self, knn_data_path, emb_model_name='paraphrase-MiniLM-L6-v2', debug=False):
         self.sentence_embedder = SentenceTransformer(emb_model_name)
