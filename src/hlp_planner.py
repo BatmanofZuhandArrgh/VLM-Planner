@@ -200,7 +200,7 @@ class LLM_HLP_Generator():
     # Main point of entry for LLM HLP prompt generator, use in run_eval
     def generate_gpt_prompt(self, curr_task, k):
 
-        prompt = self.generate_prompt(curr_task, k, removeNav=False, naturalFormat=False, includeLow=True)
+        prompt = self.generate_prompt(curr_task, k, removeNav=False, naturalFormat=False, includeLow=False)
 
         return prompt 
 

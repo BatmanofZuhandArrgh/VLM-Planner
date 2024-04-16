@@ -26,15 +26,13 @@ def action_formatting(action_str, admissible_actions, cur_loc, cur_obj):
     
     action_str = action_str.strip().lower()
     action_str = re.sub(r'\d+', '', action_str)
-
-
     
     #Get all objects admissible
     # pattern = r'(\b\w+\b) (\d+)'
     # all_objects = [re.findall(pattern, x)[0] for x in admissible_actions]
     # print(all_objects)
 
-    if any(keyword in action_str for keyword in ['go to', 'use', 'open', 'close']): 
+    if any(keyword in action_str for keyword in ['go to ', 'use ', 'open ', 'close ', 'examine ']): 
         #Get all actions admissible similar to x
         all_similar_actions = [x for x in admissible_actions if action_str in x]
     
@@ -43,19 +41,23 @@ def action_formatting(action_str, admissible_actions, cur_loc, cur_obj):
             return action_str
         output = random.sample(all_similar_actions, 1)[0]
         
-    elif 'take' in action_str:
-        #Take is usually not in the perms
-        tar = action_str.split(' ')[-1]
+    elif 'take ' in action_str:
+        #Take is usually taking the index 1 item
         all_similar_actions = [x for x in admissible_actions if action_str in x]
 
-        output = 'take ' + tar + ' 1' +' from ' + cur_loc
+        if len(all_similar_actions) == 0:
+            #Completely error generated plan
+            return action_str
+    
+        output = random.sample(all_similar_actions, 1)[0]
 
-    elif 'put' in action_str:
+    elif 'put ' in action_str:
         # It does seem that the plans has coherence, it only puts down what it already has
         #Take is usually not in the perms
-        tar = action_str.split(' ')[-1]
-        output = 'put ' +  cur_obj + ' in ' + tar + ' 1' #Both in/on works
-        
+        output = 'put ' +  cur_obj + ' in/on ' + cur_loc #Both in/on works
+    
+    elif 'pass' in action_str:
+        output = action_str
     print('Output plan: ', action_str, output)
 
     return output
@@ -66,6 +68,9 @@ def action_mapping(action_str):
     '''
     Mapping action vocab from alfworld==0.2.2 to alfworld==0.3.3
     '''
+    if len(action_str.split(' ')) < 2:
+        return 'pass'
+    
     if "Navigation" in action_str:
         return action_str.replace('Navigation', 'go to')
     
@@ -103,8 +108,8 @@ def action_mapping(action_str):
 
     elif "LookObject" in action_str:
         return action_str.replace('LookObject', 'look')
-    # else:
-    #     return action_str.replace('Navigation', 'go to')
+    else:
+        return 'pass'
     
 
 def embed_sentence(sentence, model="paraphrase-MiniLM-L6-v2"):

@@ -154,6 +154,11 @@ class OracleAgent(BaseAgent):
 
         visible_objects_with_articles = ["a %s," % vo for vo in visible_objects]
         feedback = ""
+
+        #EDITED
+        if 'closed' not in recep.keys():
+            recep['closed'] = True
+        
         if len(visible_objects) > 0:
             feedback = "On the %s, you see %s" % (recep['num_id'], self.fix_and_comma_in_the_end(' '.join(visible_objects_with_articles)))
         elif not recep['closed'] and len(visible_objects) == 0:

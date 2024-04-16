@@ -163,8 +163,8 @@ def eval_single_task(prompt, env, hlp_generator, curr_task, engine, dynamic=True
                 curr_task["vis_objs"] = curr_vis_objs
                 curr_task["completed_plans"] = completed_plans
                 new_prompt = hlp_generator.generate_gpt_prompt(curr_task, k=9)
-                # print("Prompt: ", prompt)
-                # print('---End of prompt---')
+                print("Prompt: ", prompt)
+                print('---End of prompt---')
                 
                 if vision:
                     curr_frames = env.get_frames()
@@ -228,8 +228,8 @@ if __name__ == '__main__':
     hlp_generator = LLM_HLP_Generator(knn_data_path=config["llm_planner"]["knn_dataset_path"], emb_model_name=config["llm_planner"]["emb_model_name"], debug=config["llm_planner"]["debug"])
 
     # Main eval loop
-    for _ in range(num_games):
-        ob, info = env.reset()
+    for index in range(num_games):
+        ob, info = env.reset(index)
         
         # print('visible object')
         # print(env.envs[0].controller.visible_objects)
@@ -275,8 +275,8 @@ if __name__ == '__main__':
             
             # print('init prompt')
             init_prompt = hlp_generator.generate_gpt_prompt(curr_task, k=config["llm_planner"]["num_in_context_examples"])
-            # print(init_prompt)
-            # print('---end of prompt---')
+            print(init_prompt)
+            print('---end of prompt---')
             
             for i, (k, v) in enumerate(prefixes.items()):
                 if name.startswith(k):

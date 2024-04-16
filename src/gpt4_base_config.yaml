@@ -1,5 +1,5 @@
 llm_planner:
-  engine: "gpt-4v"
+  engine: "gpt-3" #"gpt-4v"
   dynamic: "true"
   knn_dataset_path: "./knn_set.pkl"
   emb_model_name: "paraphrase-MiniLM-L6-v2"

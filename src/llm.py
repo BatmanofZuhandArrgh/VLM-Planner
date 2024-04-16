@@ -12,7 +12,7 @@ def llm(prompt, engine, images=None, stop=["\n"]):
                 {"role": "system", "content": "You are a helpful assistant that can plan household tasks."},
                 {"role": "user", "content": prompt},
             ],
-            temperature=0,
+            temperature=0.5,
             max_tokens=100,
             top_p=1,
             frequency_penalty=0.0,
