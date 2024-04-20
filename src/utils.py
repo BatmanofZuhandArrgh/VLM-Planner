@@ -13,6 +13,7 @@ def locate_agent(admissible_actions):
         return close_actions[0].split('close ')[-1]
     else: raise ValueError('Shouldnt be more than 1 close action')
 
+    
 def action_formatting(action_str, admissible_actions, cur_loc, cur_obj):
     '''
     Format action 'go to fridge' to 'go to fridge 1'
@@ -32,7 +33,7 @@ def action_formatting(action_str, admissible_actions, cur_loc, cur_obj):
     # all_objects = [re.findall(pattern, x)[0] for x in admissible_actions]
     # print(all_objects)
 
-    if any(keyword in action_str for keyword in ['go to ', 'use ', 'open ', 'close ', 'examine ']): 
+    if any(keyword in action_str for keyword in ['go to ', 'use ', 'open ', 'close ', 'examine ', 'slice ']): 
         #Get all actions admissible similar to x
         all_similar_actions = [x for x in admissible_actions if action_str in x]
     
@@ -58,7 +59,8 @@ def action_formatting(action_str, admissible_actions, cur_loc, cur_obj):
     
     elif 'pass' in action_str:
         output = action_str
-    print('Output plan: ', action_str, output)
+        
+    print('Output plan: ', action_str, ' | ', output)
 
     return output
 
@@ -143,8 +145,8 @@ def embed_sentence(sentence, model="paraphrase-MiniLM-L6-v2"):
 
 if __name__ == '__main__':
 
-
+    pass
     # sentence = ['This is an example sentence']
 
     # print(embed_sentence(sentence))
-    print(mapping_action_str('Navigation Batman'))
+    # print(mapping_action_str('Navigation Batman'))

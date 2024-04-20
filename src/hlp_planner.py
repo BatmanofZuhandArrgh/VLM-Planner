@@ -5,7 +5,7 @@ import openai
 import random
 import re
 
-from vlm import vlm
+from llm import llm
 from ast import literal_eval
 from sentence_transformers import SentenceTransformer
 from sentence_transformers.util import cos_sim
@@ -21,6 +21,8 @@ ACT_TO_STR = {
     'SliceObject': "Slice",
     'Navigation': "Navigate"
 }
+
+TO_BE_REMOVE = ['ToggleObjectOff', "Toggle off"] #Remove because I'm not sure it's in the command
 
 def vlm_detect(model, processor, image,  prompt = "USER: <image>\nWhat objects are in this pic?\nASSISTANT:"):
     #Try to get every objects, even tho it produces more objects
@@ -64,14 +66,17 @@ class LLM_HLP_Generator():
         return [entry[0] for entry in topK]
 
 
-    def generate_prompt(self, curr_task, k, removeNav=False, naturalFormat=False, includeLow=False):
+    def generate_prompt(self, curr_task, k, vision = False, removeNav=False, naturalFormat=False, includeLow=False):
         #header
         prompt = "Create a high-level plan for completing a household task using the allowed actions and visible objects."
+
+        if vision:
+            prompt = "Create a high-level plan in the format <Allow Action> <Target Object>, <Allow Action> <Target Object>,... for completing a household task using the field-of-view in simulated environment, the allowed actions and visible and other objects in the room."
         
         if naturalFormat:
-            prompt += f"\n\n\nAllowed actions: {', '.join(ACT_TO_STR.values())}" 
+            prompt += f"\n\n\nAllowed actions: {', '.join([x for x in ACT_TO_STR.values() if x not in TO_BE_REMOVE])}" 
         else:
-            prompt += f"\n\n\nAllowed actions: {', '.join(ACT_TO_STR.keys())}" 
+            prompt += f"\n\n\nAllowed actions: {', '.join([x for x in ACT_TO_STR.keys() if x not in TO_BE_REMOVE])}" 
         
         #prompt += "Valid objects in the environment: f{}"
 
@@ -107,6 +112,8 @@ class LLM_HLP_Generator():
             # Split past and next plans randomly
             planSplit = random.sample(range(len(step_list)),1)[0]
             
+            step_list = [x for x in step_list if x[0] not in TO_BE_REMOVE]
+
             # In-context examples components
             high_level_str = str(trainTaskRow["task_instr"])
             step_by_step_str = '. '.join(trainTaskRow["step_instr"])
@@ -122,7 +129,7 @@ class LLM_HLP_Generator():
                 prompt += "\nStep by step instructions: " + step_by_step_str
 
             prompt +=  "\nCompleted plans: " + past_plan_str  \
-                    + "\nVisible objects are " + in_context_obj_str \
+                    + "\nOther objects in the room are " + in_context_obj_str \
                     + "\nNext Plans: " + next_plans_str
                     
         
@@ -149,7 +156,7 @@ class LLM_HLP_Generator():
             prompt += "\nStep by step instructions: " + task_step_by_step_str
 
         prompt += "\nCompleted plans: " + task_past_plan_str \
-                + "\nVisible objects are " + task_obj_str \
+                + "\nOther objects in the room are " + task_obj_str \
                 + "\nNext Plans:"
                 
         curr_task["Prompts"] = prompt
@@ -157,6 +164,20 @@ class LLM_HLP_Generator():
         
         return prompt
 
+    def get_logit_biases(self, logit_bias_text):
+        #identify tokens for which to increase logit bias
+        
+        logit_biases = {}
+
+        try:
+            tokens = self.tokenizer.encode(logit_bias_text)
+            for token in tokens:
+                logit_biases[token]= .1 #logit bias 
+        except Exception as e:
+            print('Error in tokenizer doing logit bias')
+            pass
+        
+        return logit_biases
 
     #run GPT-3 on specified test set using the KNN prompts
     def run_gpt3(self, prompt, logit_bias_text, engine='text-davinci-003', max_tokens=200):
@@ -165,10 +186,7 @@ class LLM_HLP_Generator():
         gpt3_output = []
 
         #identify tokens for which to increase logit bias
-        logit_biases = {}
-        tokens = self.tokenizer.encode(logit_bias_text)
-        for token in tokens:
-            logit_biases[token]= .1 #logit bias 
+        logit_biases = self.get_logit_biases(logit_bias_text)
 
         if self.debug:
             print("\n---------------Prompt----------------")
@@ -189,18 +207,27 @@ class LLM_HLP_Generator():
         return prediction, gpt3_output   
 
     # Main point of entry for LLM HLP generator
-    def generate_hlp(self, curr_task, k):
+    def generate_hlp(self, curr_task, k, vision = False):
 
-        prompt = self.generate_prompt(curr_task, k, removeNav=False, naturalFormat=False, includeLow=False)
 
-        generated_hlp, gpt3_output = self.run_gpt3(prompt, curr_task["vis_objs"])
+        prompt = self.generate_prompt(curr_task, k, removeNav=False, naturalFormat=False, vision = vision, includeLow=False)
+        
+        if self.debug:
+            print("\n---------------Prompt----------------")
+            print(prompt)
+        
+        logit_bias = self.get_logit_biases(curr_task['vis_objs'])
+        logit_bias = {}
+
+        # generated_hlp, gpt3_output = self.run_gpt3(prompt, curr_task["vis_objs"])
+        generated_hlp = llm(prompt, engine='gpt-3', logit_bias=logit_bias,  images=[], stop=['\n'])
 
         return generated_hlp 
 
     # Main point of entry for LLM HLP prompt generator, use in run_eval
-    def generate_gpt_prompt(self, curr_task, k):
+    def generate_gpt_prompt(self, curr_task, k, vision = False):
 
-        prompt = self.generate_prompt(curr_task, k, removeNav=False, naturalFormat=False, includeLow=False)
+        prompt = self.generate_prompt(curr_task, k, removeNav=False, vision = vision, naturalFormat=False, includeLow=False)
 
         return prompt 
 
@@ -255,7 +282,7 @@ if __name__=='__main__':
 
     hlp_generator = LLM_HLP_Generator(knn_data_path="knn_set.pkl", emb_model_name="paraphrase-MiniLM-L6-v2", debug=True)
 
-    generated_plan = hlp_generator.generate_hlp(curr_task, k=9)
+    generated_plan = hlp_generator.generate_hlp(curr_task, k=9, vision = True)
 
     print("\n---------GPT3 generated HLP-------------")
     print(generated_plan)
