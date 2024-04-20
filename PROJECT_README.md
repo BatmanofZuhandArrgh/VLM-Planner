@@ -14,7 +14,7 @@ The structure of content within each task file:
 - Success | GC  : Output from Alfworld
 - Plan          : Plan generated from the planner
 - Admisible     : Admissible action, needs to be input exactly for the simulation to execute
-- <action, object>++<boolean>  : Action input, and a boolean value: 1 for successful execution and 0 for failed 
+- <action, object>++<boolean value>  : Action input, and a boolean value: 1 for successful execution and 0 for failed 
 
 2. json_2.1.1: Images and actions for several trials for each tasks
     - valid_seen
